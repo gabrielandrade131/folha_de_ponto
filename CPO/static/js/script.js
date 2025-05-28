@@ -239,43 +239,58 @@ function exportarParaPDF() {
     // Remove os placeholders antes de gerar o PDF
     const inputs = document.querySelectorAll('input.hora-input');
     inputs.forEach(input => {
-        input.setAttribute('data-placeholder', input.getAttribute('placeholder')); // Salva o placeholder
-        input.removeAttribute('placeholder'); // Remove o placeholder
+        input.setAttribute('data-placeholder', input.getAttribute('placeholder'));
+        input.removeAttribute('placeholder');
     });
 
     mostrarCarregamento();
 
-    html2canvas(document.querySelector(".folha-de-ponto"), {
+    html2canvas(document.querySelector('.folha-de-ponto'), {
         scale: 2,
         useCORS: true,
-        allowTaint: false
-    }).then(canvas => {
+        scrollY: -window.scrollY
+    }).then(function(canvas) {
         const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const imgProps = pdf.getImageProperties(imgData);
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+        const pdf = new window.jspdf.jsPDF({
+            orientation: 'portrait',
+            unit: 'cm',
+            format: 'a4'
+        });
 
-        pdf.addImage(imgData, 'PNG', 10, 10, pdfWidth - 20, pdfHeight - 20);
-        pdf.save("folha_de_ponto.pdf");
+        const pageWidth = 21;
+        const pageHeight = 29.7;
+
+        // Calcula a altura proporcional para caber na página
+        let imgWidth = pageWidth;
+        let imgHeight = canvas.height * imgWidth / canvas.width;
+
+        // Se a imagem for mais alta que a página, reduz a altura para caber
+        if (imgHeight > pageHeight) {
+            imgHeight = pageHeight;
+            imgWidth = canvas.width * imgHeight / canvas.height;
+        }
+
+        // Centraliza na página se sobrar espaço
+        const x = (pageWidth - imgWidth) / 2;
+        const y = (pageHeight - imgHeight) / 2;
+
+        pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
+        pdf.save('folha_de_ponto.pdf');
 
         // Restaura os placeholders após a geração do PDF
         inputs.forEach(input => {
-            input.setAttribute('placeholder', input.getAttribute('data-placeholder')); // Restaura o placeholder
-            input.removeAttribute('data-placeholder'); // Remove o atributo temporário
+            input.setAttribute('placeholder', input.getAttribute('data-placeholder'));
+            input.removeAttribute('data-placeholder');
         });
 
         esconderCarregamento();
         mostrarNotificacao("PDF gerado com sucesso!", 'sucesso');
     }).catch(err => {
         console.error("Erro ao gerar PDF:", err);
-
-        // Restaura os placeholders em caso de erro
         inputs.forEach(input => {
-            input.setAttribute('placeholder', input.getAttribute('data-placeholder')); // Restaura o placeholder
-            input.removeAttribute('data-placeholder'); // Remove o atributo temporário
+            input.setAttribute('placeholder', input.getAttribute('data-placeholder'));
+            input.removeAttribute('data-placeholder');
         });
-
         esconderCarregamento();
         mostrarNotificacao("Erro ao gerar PDF.", 'erro');
     });
